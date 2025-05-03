@@ -1,32 +1,55 @@
-# 🌀 BatchProject
+# 🌀 Redmine Issue Tracker Batch Project
 
-A Spring Boot + Spring Batch project that periodically fetches issues from the Redmine API and stores them in a PostgreSQL database.
-
-## 📌 Project Purpose
-
-The goal is to collect assigned and closed Redmine issues within a certain time interval and save them into a database for further reporting or processing.
+# 📌 Project Purpose & Project Overview
+This project aims to automate the process of fetching and analyzing Redmine issue data to track and visualize employee performance. By utilizing a cron job mechanism, Redmine data is fetched regularly, processed, and presented in visually appealing charts and tables to give an overview of issues resolved by employees.
 
 ## 🚀 Technologies Used
 
-- Java 17  
-- Spring Boot  
-- Spring Batch  
-- Spring Data JPA (Hibernate)  
-- PostgreSQL  
-- Maven  
-- dotenv-java (for environment variables)  
-- Redmine REST API  
+Automated Data Fetching: Fetch Redmine issue data on a regular basis via cron jobs.
 
-## 🛠 Setup Instructions
+Data Analysis: Process the fetched data to track employee performance.
 
-🧠 How It Works
-Connects to Redmine using the API key.
+Custom Time Ranges: Specify time intervals (e.g., daily, weekly, monthly) to generate tailored reports.
 
-Filters issues that are assigned to a user and have a closed status.
+Visual Reporting: Display data in intuitive graphs, charts, and tables.
 
-Filters by closed_date within a configurable time range.
+Redmine API: To fetch real-time issue data.
 
-Saves the filtered issues into the PostgreSQL database.
+Cron Jobs: To automate periodic data fetching.
+
+Java: Backend data processing and Redmine integration.
+
+Spring Boot: For creating backend services.
+
+MySQL/PostgreSQL: For data storage.
+
+Thymeleaf/JavaScript: For rendering visual charts.
+
+Data Processing
+The fetched data is processed to track metrics such as:
+
+Number of issues resolved per employee
+
+Time taken to resolve each issue
+
+Trends over time
+
+Reporting
+The processed data is visualized as:
+
+Graphs and charts showing the number of issues resolved
+
+Tables summarizing team performance
+
+Prerequisites
+Redmine API Key: You need your Redmine API key.
+
+MySQL/PostgreSQL: Database to store fetched data.
+
+Java 8 or Later: To run the backend services.
+
+Spring Boot: For backend services.
+
 
 Optionally sends email notifications or reports.
 
