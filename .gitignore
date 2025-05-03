@@ -1,16 +1,54 @@
-# Environment
-.env
-
-# Java build
-target/
-*.class
-
-# IntelliJ
+# IntelliJ IDEA
 .idea/
 
 # Eclipse
-*.iml
+.project
+.classpath
+.settings/
 
-# OS
+# VS Code
+.vscode/
+
+# Maven
+target/
+*.log
+
+# Build tools
+*.iml
+*.bak
+
+# Logs
+*.log
+
+# Gradle
+.gradle/
+
+# Node.js dependencies (if you have any frontend)
+node_modules/
+
+# OS-generated files
 .DS_Store
 Thumbs.db
+
+# Environment files
+.env
+
+# Java bytecode
+*.class
+
+# Dependency directories
+/.mvn
+/.idea
+/.vscode
+
+# Other IDE or project files
+*.swp
+*~
+
+# Temporary files
+*.tmp
+*.bak
+
+# Maven wrapper
+mvnw
+mvnw.cmd
