@@ -1,0 +1,16 @@
+# Environment
+.env
+
+# Java build
+target/
+*.class
+
+# IntelliJ
+.idea/
+
+# Eclipse
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
