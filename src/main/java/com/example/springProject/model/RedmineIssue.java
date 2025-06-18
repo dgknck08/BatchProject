@@ -1,22 +1,10 @@
 package com.example.springProject.model;
 
-
-
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-
-import org.antlr.v4.runtime.misc.NotNull;
-
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonProperty;
-
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 
 @Entity
 @Table(name = "issues")
@@ -47,20 +35,11 @@ public class RedmineIssue {
     @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate startDate;
 
-    @Column(name = "closed_date") // Optional if the column name matches
-    private LocalDateTime closedDate; // Assuming it's a Date or LocalDateTime type
-
-    // Getter and setter for closedDate
-    public LocalDateTime getClosedDate() {
-        return closedDate;
-    }
-
-    public void setClosedDate(LocalDateTime closedDate) {
-        this.closedDate = closedDate;
-    }
+    @Column(name = "closed_date")
+    private LocalDateTime closedDate;
 
     @JsonProperty("due_date")
-    private String dueDate;
+    private LocalDate dueDate; // String'den LocalDate'e çevrildi
 
     @JsonProperty("done_ratio")
     private int doneRatio;
@@ -75,7 +54,7 @@ public class RedmineIssue {
     private int spentHours;
 
     @JsonProperty("created_on")
-    private String createdOn;
+    private LocalDateTime createdOn; // String'den LocalDateTime'e çevrildi
 
     @JsonProperty("updated_on")
     private LocalDateTime updatedOn;
@@ -84,145 +63,60 @@ public class RedmineIssue {
     private LocalDateTime closedOn;
 
     @JsonProperty("statusid")
-	private int statusId;
+    private int statusId;
 
     @JsonProperty("priorityid")
-	private int priorityId;
+    private int priorityId;
 
-    // Getter ve Setter metodları
-    public RedmineProject getProject() {
-        return project;
-    }
+    // Getters and Setters
+    public int getId() { return id; }
+    public void setId(int id) { this.id = id; }
 
-    public void setProject(RedmineProject project) {
-        this.project = project;
-    }
+    public RedmineProject getProject() { return project; }
+    public void setProject(RedmineProject project) { this.project = project; }
 
-    public RedmineUser getAssignedTo() {
-        return assignedTo;
-    }
+    public RedmineUser getAssignedTo() { return assignedTo; }
+    public void setAssignedTo(RedmineUser assignedTo) { this.assignedTo = assignedTo; }
 
-    public void setAssignedTo(RedmineUser assignedTo) {
-        this.assignedTo = assignedTo;
-    }
+    public String getSubject() { return subject != null ? subject : ""; }
+    public void setSubject(String subject) { this.subject = subject; }
 
-    public int getId() {
-        return id;
-    }
+    public String getDescription() { return description != null ? description : ""; }
+    public void setDescription(String description) { this.description = description; }
 
-    public void setId(int id) {
-        this.id = id;
-    }
+    public LocalDate getStartDate() { return startDate; }
+    public void setStartDate(LocalDate startDate) { this.startDate = startDate; }
 
-    public String getSubject() {
-        return subject != null ? subject : " "; // null ise boş string döner
-    }
+    public LocalDate getDueDate() { return dueDate; }
+    public void setDueDate(LocalDate dueDate) { this.dueDate = dueDate; }
 
-    public void setSubject(String subject) {
-        this.subject = subject != null ? subject : " "; // null ise boş string atar
-    }
+    public LocalDateTime getClosedDate() { return closedDate; }
+    public void setClosedDate(LocalDateTime closedDate) { this.closedDate = closedDate; }
 
-    public String getDescription() {
-        return description != null ? description : " "; // null ise boş string döner
-    }
+    public int getStatusId() { return statusId; }
+    public void setStatusId(int statusId) { this.statusId = statusId; }
 
-    public void setDescription(String description) {
-        this.description = description != null ? description : " "; // null ise boş string atar
-    }
+    public int getPriorityId() { return priorityId; }
+    public void setPriorityId(int priorityId) { this.priorityId = priorityId; }
 
-    public int getStatusId() {
-        return statusId;
-    }
+    public int getDoneRatio() { return doneRatio; }
+    public void setDoneRatio(int doneRatio) { this.doneRatio = doneRatio; }
 
-    public void setStatusId(int statusId) {
-        this.statusId = statusId;
-    }
+    public boolean isPrivate() { return isPrivate; }
+    public void setPrivate(boolean isPrivate) { this.isPrivate = isPrivate; }
 
-    public int getPriorityId() {
-        return priorityId;
-    }
+    public Integer getEstimatedHours() { return estimatedHours; }
+    public void setEstimatedHours(Integer estimatedHours) { this.estimatedHours = estimatedHours; }
 
-    public void setPriorityId(int priorityId) {
-        this.priorityId = priorityId;
-    }
+    public int getSpentHours() { return spentHours; }
+    public void setSpentHours(int spentHours) { this.spentHours = spentHours; }
 
-    public int getDoneRatio() {
-        return doneRatio;
-    }
+    public LocalDateTime getCreatedOn() { return createdOn; }
+    public void setCreatedOn(LocalDateTime createdOn) { this.createdOn = createdOn; }
 
-    public void setDoneRatio(int doneRatio) {
-        this.doneRatio = doneRatio;
-    }
+    public LocalDateTime getUpdatedOn() { return updatedOn; }
+    public void setUpdatedOn(LocalDateTime updatedOn) { this.updatedOn = updatedOn; }
 
-    public boolean isPrivate() {
-        return isPrivate;
-    }
-
-    public void setPrivate(boolean isPrivate) {
-        this.isPrivate = isPrivate;
-    }
-
-    public Integer getEstimatedHours() {
-        return estimatedHours;
-    }
-
-    public void setEstimatedHours(Integer estimatedHours) {
-        this.estimatedHours = estimatedHours;
-    }
-
-    public int getSpentHours() {
-        return spentHours;
-    }
-
-    public void setSpentHours(int spentHours) {
-        this.spentHours = spentHours;
-    }
-
-   
-
-    public String getCreatedOn() {
-        return createdOn != null ? createdOn : " "; // null ise boş string döner
-    }
-
-    public void setCreatedOn(String createdOn) {
-        this.createdOn = createdOn != null ? createdOn : " "; // null ise boş string atar
-    }
-
-    public LocalDateTime getUpdatedOn() {
-        return updatedOn;
-    }
-
-    public void setUpdatedOn(LocalDateTime updatedOn) {
-        this.updatedOn = updatedOn;
-    }
-
-    public LocalDateTime getClosedOn() {
-        return closedOn;
-    }
-
-    public void setClosedOn(LocalDateTime closedOn) {
-        this.closedOn = closedOn;
-    }
-
-	public Object getStartDate() {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	public void setStartDate(Object startDate2) {
-		// TODO Auto-generated method stub
-		
-	}
-
-	public Object getDueDate() {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	public void setDueDate(Object dueDate2) {
-		// TODO Auto-generated method stub
-		
-	}
-    
+    public LocalDateTime getClosedOn() { return closedOn; }
+    public void setClosedOn(LocalDateTime closedOn) { this.closedOn = closedOn; }
 }
-
