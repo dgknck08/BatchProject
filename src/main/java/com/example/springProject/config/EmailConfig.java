@@ -4,10 +4,12 @@ import java.util.Properties;
 import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.mail.javamail.JavaMailSender;
 
+@Configuration  // annotation
 public class EmailConfig {
-	@Value("${spring.mail.host}")
+    @Value("${spring.mail.host}")
     private String mailHost;
 
     @Value("${spring.mail.port}")
@@ -37,7 +39,7 @@ public class EmailConfig {
         props.put("mail.smtp.auth", mailSmtpAuth);
         props.put("mail.smtp.starttls.enable", mailStartTls);
         props.put("mail.transport.protocol", "smtp");
-        props.put("mail.debug", "true");
+        props.put("mail.debug", "false"); // Production'da false olmalı
 
         return mailSender;
     }
