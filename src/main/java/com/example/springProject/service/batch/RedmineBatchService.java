@@ -1,4 +1,4 @@
-package com.example.springProject.service;
+package com.example.springProject.service.batch;
 
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 
 import com.example.springProject.exception.ApiException;
 import com.example.springProject.exception.DatabaseException;
+import com.example.springProject.util.EmailService;
 
 import ch.qos.logback.classic.Logger;
 @Service

@@ -1,4 +1,4 @@
-package com.example.springProject.service;
+package com.example.springProject.service.batch;
 
 import java.util.List;
 import java.util.function.Consumer;
@@ -12,7 +12,6 @@ import org.springframework.stereotype.Service;
 import com.example.springProject.exception.ApiException;
 import com.example.springProject.exception.DatabaseException;
 import com.example.springProject.model.RedmineResponse;
-
 
 import ch.qos.logback.classic.Logger;
 
