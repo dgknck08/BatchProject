@@ -2,8 +2,10 @@ package com.example.springProject.model;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonProperty;
+
 import jakarta.persistence.*;
 
 @Entity
@@ -39,7 +41,7 @@ public class RedmineIssue {
     private LocalDateTime closedDate;
 
     @JsonProperty("due_date")
-    private LocalDate dueDate; // String'den LocalDate'e çevrildi
+    private LocalDate dueDate;
 
     @JsonProperty("done_ratio")
     private int doneRatio;
@@ -54,7 +56,7 @@ public class RedmineIssue {
     private int spentHours;
 
     @JsonProperty("created_on")
-    private LocalDateTime createdOn; // String'den LocalDateTime'e çevrildi
+    private LocalDateTime createdOn;
 
     @JsonProperty("updated_on")
     private LocalDateTime updatedOn;
@@ -69,54 +71,140 @@ public class RedmineIssue {
     private int priorityId;
 
     // Getters and Setters
-    public int getId() { return id; }
-    public void setId(int id) { this.id = id; }
 
-    public RedmineProject getProject() { return project; }
-    public void setProject(RedmineProject project) { this.project = project; }
+    public int getId() {
+        return id;
+    }
 
-    public RedmineUser getAssignedTo() { return assignedTo; }
-    public void setAssignedTo(RedmineUser assignedTo) { this.assignedTo = assignedTo; }
+    public void setId(int id) {
+        this.id = id;
+    }
 
-    public String getSubject() { return subject != null ? subject : ""; }
-    public void setSubject(String subject) { this.subject = subject; }
+    public RedmineProject getProject() {
+        return project;
+    }
 
-    public String getDescription() { return description != null ? description : ""; }
-    public void setDescription(String description) { this.description = description; }
+    public void setProject(RedmineProject project) {
+        this.project = project;
+    }
 
-    public LocalDate getStartDate() { return startDate; }
-    public void setStartDate(LocalDate startDate) { this.startDate = startDate; }
+    public RedmineUser getAssignedTo() {
+        return assignedTo;
+    }
 
-    public LocalDate getDueDate() { return dueDate; }
-    public void setDueDate(LocalDate dueDate) { this.dueDate = dueDate; }
+    public void setAssignedTo(RedmineUser assignedTo) {
+        this.assignedTo = assignedTo;
+    }
 
-    public LocalDateTime getClosedDate() { return closedDate; }
-    public void setClosedDate(LocalDateTime closedDate) { this.closedDate = closedDate; }
+    public String getSubject() {
+        return subject != null ? subject : "";
+    }
 
-    public int getStatusId() { return statusId; }
-    public void setStatusId(int statusId) { this.statusId = statusId; }
+    public void setSubject(String subject) {
+        this.subject = subject;
+    }
 
-    public int getPriorityId() { return priorityId; }
-    public void setPriorityId(int priorityId) { this.priorityId = priorityId; }
+    public String getDescription() {
+        return description != null ? description : "";
+    }
 
-    public int getDoneRatio() { return doneRatio; }
-    public void setDoneRatio(int doneRatio) { this.doneRatio = doneRatio; }
+    public void setDescription(String description) {
+        this.description = description;
+    }
 
-    public boolean isPrivate() { return isPrivate; }
-    public void setPrivate(boolean isPrivate) { this.isPrivate = isPrivate; }
+    public LocalDate getStartDate() {
+        return startDate;
+    }
 
-    public Integer getEstimatedHours() { return estimatedHours; }
-    public void setEstimatedHours(Integer estimatedHours) { this.estimatedHours = estimatedHours; }
+    public void setStartDate(LocalDate startDate) {
+        this.startDate = startDate;
+    }
 
-    public int getSpentHours() { return spentHours; }
-    public void setSpentHours(int spentHours) { this.spentHours = spentHours; }
+    public LocalDate getDueDate() {
+        return dueDate;
+    }
 
-    public LocalDateTime getCreatedOn() { return createdOn; }
-    public void setCreatedOn(LocalDateTime createdOn) { this.createdOn = createdOn; }
+    public void setDueDate(LocalDate dueDate) {
+        this.dueDate = dueDate;
+    }
 
-    public LocalDateTime getUpdatedOn() { return updatedOn; }
-    public void setUpdatedOn(LocalDateTime updatedOn) { this.updatedOn = updatedOn; }
+    public LocalDateTime getClosedDate() {
+        return closedDate;
+    }
 
-    public LocalDateTime getClosedOn() { return closedOn; }
-    public void setClosedOn(LocalDateTime closedOn) { this.closedOn = closedOn; }
+    public void setClosedDate(LocalDateTime closedDate) {
+        this.closedDate = closedDate;
+    }
+
+    public int getDoneRatio() {
+        return doneRatio;
+    }
+
+    public void setDoneRatio(int doneRatio) {
+        this.doneRatio = doneRatio;
+    }
+
+    public boolean isPrivate() {
+        return isPrivate;
+    }
+
+    public void setPrivate(boolean isPrivate) {
+        this.isPrivate = isPrivate;
+    }
+
+    public Integer getEstimatedHours() {
+        return estimatedHours;
+    }
+
+    public void setEstimatedHours(Integer estimatedHours) {
+        this.estimatedHours = estimatedHours;
+    }
+
+    public int getSpentHours() {
+        return spentHours;
+    }
+
+    public void setSpentHours(int spentHours) {
+        this.spentHours = spentHours;
+    }
+
+    public LocalDateTime getCreatedOn() {
+        return createdOn;
+    }
+
+    public void setCreatedOn(LocalDateTime createdOn) {
+        this.createdOn = createdOn;
+    }
+
+    public LocalDateTime getUpdatedOn() {
+        return updatedOn;
+    }
+
+    public void setUpdatedOn(LocalDateTime updatedOn) {
+        this.updatedOn = updatedOn;
+    }
+
+    public LocalDateTime getClosedOn() {
+        return closedOn;
+    }
+
+    public void setClosedOn(LocalDateTime closedOn) {
+        this.closedOn = closedOn;
+    }
+
+    public int getStatusId() {
+        return statusId;
+    }
+
+    public void setStatusId(int statusId) {
+        this.statusId = statusId;
+    }
+
+    public int getPriorityId() {
+        return priorityId;
+    }
+
+    public void setPriorityId(int priorityId) {
+        this.priorityId = priorityId;
+    }
 }
