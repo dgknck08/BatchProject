@@ -48,8 +48,26 @@ public class DataPersistenceService {
         Map<Integer, RedmineIssue> existingIssueMap = existingIssues.stream()
             .collect(Collectors.toMap(RedmineIssue::getId, Function.identity()));
 
+        // Mevcut kullanıcıları bir kere çekip login ile mapping
+        Map<String, RedmineUser> existingUserMap = userRepository.findAll().stream()
+            .collect(Collectors.toMap(RedmineUser::getLogin, Function.identity()));
+
         for (RedmineIssue issue : issues) {
             try {
+                RedmineUser assignedUser = issue.getAssignedTo();
+                if (assignedUser != null && assignedUser.getLogin() != null && !assignedUser.getLogin().isEmpty()) {
+                    RedmineUser existingUser = existingUserMap.get(assignedUser.getLogin());
+                    if (existingUser == null) {
+                        userRepository.save(assignedUser);
+                        existingUserMap.put(assignedUser.getLogin(), assignedUser);
+                    } else {
+                        issue.setAssignedTo(existingUser);
+                    }
+                } else {
+                    // assignedUser varsa ama login boşsa sorun çıkmasın diye assignedTo null yaptım
+                    issue.setAssignedTo(null);
+                }
+
                 if (existingIssueMap.containsKey(issue.getId())) {
                     RedmineIssue existing = existingIssueMap.get(issue.getId());
                     boolean isUpdated = false;
@@ -93,6 +111,8 @@ public class DataPersistenceService {
             }
         }
     }
+
+
 
     public void saveTrackers(List<RedmineTracker> trackers) {
         List<RedmineTracker> existingTrackers = trackerRepository.findAll();
@@ -144,25 +164,25 @@ public class DataPersistenceService {
                     RedmineProject existing = existingProject.get();
                     boolean isUpdated = false;
 
-                    // Proje açıklamasını kontrol et ve güncelle
+                    // Proje açıklamasını 
                     if (!existing.getDescription().equals(project.getDescription())) {
                         existing.setDescription(project.getDescription());
                         isUpdated = true;
                     }
 
-                    // Proje durumunu kontrol et ve güncelle
+                    // Proje durumunu kontrolü
                     if (existing.getStatus() != project.getStatus()) {
                         existing.setStatus(project.getStatus());
                         isUpdated = true;
                     }
 
-                    // Proje erişim durumunu kontrol et ve güncelle
+                    // Proje erişim durumunu kontrol et ve güncelleme işşlemi
                     if (existing.isPublic() != project.isPublic()) {
                         existing.setPublic(project.isPublic());
                         isUpdated = true;
                     }
 
-                    // Eğer güncellendiyse kaydet
+                    // güncellendiyse kaydetme işlemi
                     if (isUpdated) {
                         projectRepository.save(existing);
                         logger.info("Updated project: {}", project.getIdentifier());
@@ -195,7 +215,6 @@ public class DataPersistenceService {
                         RedmineUser existingUser = existingUserMap.get(user.getLogin());
                         boolean isUpdated = false;
 
-                        // Kullanıcı bilgilerini güncelle
                         if (!existingUser.getFirstname().equals(user.getFirstname())) {
                             existingUser.setFirstname(user.getFirstname());
                             isUpdated = true;
@@ -213,7 +232,6 @@ public class DataPersistenceService {
                             isUpdated = true;
                         }
 
-                        // Eğer güncellemeler yapıldıysa kaydet
                         if (isUpdated) {
                             userRepository.save(existingUser);
                             logger.info("Updated user: {}", user.getLogin());
@@ -225,7 +243,7 @@ public class DataPersistenceService {
                         logger.info("New user saved: {}", user.getLogin());
                     }
                 } catch (Exception e) {
-                    String query = "Saving user with login: " + user.getLogin(); // Sorgu bilgisi
+                    String query = "Saving user with login: " + user.getLogin(); 
                     logger.error("Database error occurred while processing user {}: {}", user.getLogin(), e.getMessage());
                     logger.error("Failed Query: {}", query);
                     logger.error("StackTrace: ", e);
