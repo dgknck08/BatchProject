@@ -1,8 +1,8 @@
 package com.example.springProject.service.batch;
 
- 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -10,297 +10,538 @@ import java.util.stream.Collectors;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import com.example.springProject.model.RedmineIssue;
-import com.example.springProject.model.RedmineProject;
-
-import com.example.springProject.model.RedmineTracker;
-import com.example.springProject.model.RedmineUser;
-import com.example.springProject.repository.RedmineIssueRepository;
-import com.example.springProject.repository.RedmineProjectRepository;
-import com.example.springProject.repository.RedmineTrackerRepository;
-import com.example.springProject.repository.RedmineUserRepository;
+import com.example.springProject.model.*;
+import com.example.springProject.repository.*;
 import com.example.springProject.exception.DatabaseException;
+
 import ch.qos.logback.classic.Logger;
- 
+
 @Service
+@Transactional
 public class DataPersistenceService {
 
     private static final Logger logger = (Logger) LoggerFactory.getLogger(DataPersistenceService.class);
+    
     private final RedmineTrackerRepository trackerRepository;
     private final RedmineIssueRepository issueRepository;
     private final RedmineProjectRepository projectRepository;
     private final RedmineUserRepository userRepository;
+    private final RedmineStatusRepository statusRepository;
+    private final RedminePriorityRepository priorityRepository;
 
     @Autowired
     public DataPersistenceService(RedmineUserRepository userRepository,
                                   RedmineProjectRepository projectRepository,
                                   RedmineIssueRepository issueRepository,
-                                  RedmineTrackerRepository trackerRepository) {
+                                  RedmineTrackerRepository trackerRepository,
+                                  RedmineStatusRepository statusRepository,
+                                  RedminePriorityRepository priorityRepository) {
         this.userRepository = userRepository;
         this.projectRepository = projectRepository;
         this.issueRepository = issueRepository;
         this.trackerRepository = trackerRepository;
+        this.statusRepository = statusRepository;
+        this.priorityRepository = priorityRepository;
     }
 
     public void saveIssues(List<RedmineIssue> issues) {
-        List<RedmineIssue> existingIssues = issueRepository.findAll();
-        Map<Integer, RedmineIssue> existingIssueMap = existingIssues.stream()
-            .collect(Collectors.toMap(RedmineIssue::getId, Function.identity()));
+        if (issues == null || issues.isEmpty()) {
+            logger.warn("No issues to save");
+            return;
+        }
 
-        // Mevcut kullanıcıları bir kere çekip login ile mapping
-        Map<String, RedmineUser> existingUserMap = userRepository.findAll().stream()
-            .collect(Collectors.toMap(RedmineUser::getLogin, Function.identity()));
+        try {
+            // Cache existing entities to avoid repeated database queries
+            Map<Integer, RedmineIssue> existingIssueMap = issueRepository.findAll().stream()
+                .collect(Collectors.toMap(RedmineIssue::getId, Function.identity()));
+            
+            Map<Integer, RedmineProject> existingProjectMap = projectRepository.findAll().stream()
+                .collect(Collectors.toMap(RedmineProject::getId, Function.identity()));
+            
+            Map<Integer, RedmineUser> existingUserMap = userRepository.findAll().stream()
+                .collect(Collectors.toMap(RedmineUser::getId, Function.identity()));
+            
+            Map<Integer, RedmineTracker> existingTrackerMap = trackerRepository.findAll().stream()
+                .collect(Collectors.toMap(RedmineTracker::getId, Function.identity()));
+            
+            Map<Integer, RedmineStatus> existingStatusMap = statusRepository.findAll().stream()
+                .collect(Collectors.toMap(RedmineStatus::getId, Function.identity()));
+            
+            Map<Integer, RedminePriority> existingPriorityMap = priorityRepository.findAll().stream()
+                .collect(Collectors.toMap(RedminePriority::getId, Function.identity()));
 
-        for (RedmineIssue issue : issues) {
-            try {
-                RedmineUser assignedUser = issue.getAssignedTo();
-                if (assignedUser != null && assignedUser.getLogin() != null && !assignedUser.getLogin().isEmpty()) {
-                    RedmineUser existingUser = existingUserMap.get(assignedUser.getLogin());
-                    if (existingUser == null) {
-                        userRepository.save(assignedUser);
-                        existingUserMap.put(assignedUser.getLogin(), assignedUser);
-                    } else {
-                        issue.setAssignedTo(existingUser);
-                    }
-                } else {
-                    // assignedUser varsa ama login boşsa sorun çıkmasın diye assignedTo null yaptım
-                    issue.setAssignedTo(null);
+            for (RedmineIssue issue : issues) {
+                try {
+                    // Process nested entities
+                    processNestedEntities(issue, existingProjectMap, existingUserMap, 
+                                        existingTrackerMap, existingStatusMap, existingPriorityMap);
+                    
+                    // Save or update the issue
+                    saveOrUpdateIssue(issue, existingIssueMap);
+                } catch (Exception e) {
+                    handleIssueException(issue, e);
                 }
+            }
+        } catch (Exception e) {
+            logger.error("Error occurred while processing issues batch: {}", e.getMessage(), e);
+            throw new DatabaseException("Error occurred while processing issues batch", "saveIssues", e);
+        }
+    }
 
-                if (existingIssueMap.containsKey(issue.getId())) {
-                    RedmineIssue existing = existingIssueMap.get(issue.getId());
-                    boolean isUpdated = false;
+    private void processNestedEntities(RedmineIssue issue,
+                                     Map<Integer, RedmineProject> projectMap,
+                                     Map<Integer, RedmineUser> userMap,
+                                     Map<Integer, RedmineTracker> trackerMap,
+                                     Map<Integer, RedmineStatus> statusMap,
+                                     Map<Integer, RedminePriority> priorityMap) {
+        
+        // Process Project
+        if (issue.getProject() != null && issue.getProject().getId() > 0) {
+            RedmineProject existingProject = projectMap.get(issue.getProject().getId());
+            if (existingProject != null) {
+                issue.setProject(existingProject);
+            } else {
+                // Create and save new project if it doesn't exist
+                RedmineProject newProject = issue.getProject();
+                projectRepository.save(newProject);
+                projectMap.put(newProject.getId(), newProject);
+                logger.debug("Created new project: {}", newProject.getName());
+            }
+        }
 
-                    if (existing.getUpdatedOn() == null || issue.getUpdatedOn().isAfter(existing.getUpdatedOn())) {
-                        isUpdated = true;
-                        existing.setProject(issue.getProject());
-                        existing.setAssignedTo(issue.getAssignedTo());
-                        existing.setSubject(issue.getSubject());
-                        existing.setDescription(issue.getDescription());
-                        existing.setStatusId(issue.getStatusId());
-                        existing.setPriorityId(issue.getPriorityId());
-                        existing.setStartDate(issue.getStartDate());
-                        existing.setDueDate(issue.getDueDate());
-                        existing.setDoneRatio(issue.getDoneRatio());
-                        existing.setPrivate(issue.isPrivate());
-                        existing.setEstimatedHours(issue.getEstimatedHours());
-                        existing.setSpentHours(issue.getSpentHours());
-                        existing.setCreatedOn(issue.getCreatedOn());
-                        existing.setUpdatedOn(issue.getUpdatedOn());
-                        existing.setClosedOn(issue.getClosedOn());
-
-                        logger.info("Updated issue: ID: {}", existing.getId());
-                    } else {
-                        logger.info("Issue ID: {} is already up-to-date", existing.getId());
-                    }
-
-                    if (isUpdated) {
-                        issueRepository.save(existing);
-                    }
-                } else {
-                    issueRepository.save(issue);
-                    logger.info("New issue saved: ID: {}", issue.getId());
+        // Process Assigned User
+        if (issue.getAssignedTo() != null && issue.getAssignedTo().getId() > 0) {
+            RedmineUser existingUser = userMap.get(issue.getAssignedTo().getId());
+            if (existingUser != null) {
+                issue.setAssignedTo(existingUser);
+            } else {
+                // Create and save new user if it doesn't exist
+                RedmineUser newUser = issue.getAssignedTo();
+                // Set a default login if not provided (required field)
+                if (newUser.getLogin() == null || newUser.getLogin().isEmpty()) {
+                    newUser.setLogin("user_" + newUser.getId());
                 }
-            } catch (Exception e) {
-                String query = "Saving issue with ID: " + issue.getId();
-                logger.error("Error occurred while saving issue: {}", e.getMessage());
-                logger.error("Failed Query: {}", query);
-                logger.error("StackTrace: ", e);
-                throw new DatabaseException("Error occurred while saving issue", query, e);
+                userRepository.save(newUser);
+                userMap.put(newUser.getId(), newUser);
+                logger.debug("Created new user: {}", newUser.getLogin());
+            }
+        }
+
+        // Process Author
+        if (issue.getAuthor() != null && issue.getAuthor().getId() > 0) {
+            RedmineUser existingAuthor = userMap.get(issue.getAuthor().getId());
+            if (existingAuthor != null) {
+                issue.setAuthor(existingAuthor);
+            } else {
+                // Create and save new author if it doesn't exist
+                RedmineUser newAuthor = issue.getAuthor();
+                if (newAuthor.getLogin() == null || newAuthor.getLogin().isEmpty()) {
+                    newAuthor.setLogin("author_" + newAuthor.getId());
+                }
+                userRepository.save(newAuthor);
+                userMap.put(newAuthor.getId(), newAuthor);
+                logger.debug("Created new author: {}", newAuthor.getLogin());
+            }
+        }
+
+        // Process Tracker
+        if (issue.getTracker() != null && issue.getTracker().getId() > 0) {
+            RedmineTracker existingTracker = trackerMap.get(issue.getTracker().getId());
+            if (existingTracker != null) {
+                issue.setTracker(existingTracker);
+            } else {
+                // Create and save new tracker if it doesn't exist
+                RedmineTracker newTracker = issue.getTracker();
+                trackerRepository.save(newTracker);
+                trackerMap.put(newTracker.getId(), newTracker);
+                logger.debug("Created new tracker: {}", newTracker.getName());
+            }
+        }
+
+        // Process Status
+        if (issue.getStatus() != null && issue.getStatus().getId() > 0) {
+            RedmineStatus existingStatus = statusMap.get(issue.getStatus().getId());
+            if (existingStatus != null) {
+                issue.setStatus(existingStatus);
+            } else {
+                // Create and save new status if it doesn't exist
+                RedmineStatus newStatus = issue.getStatus();
+                statusRepository.save(newStatus);
+                statusMap.put(newStatus.getId(), newStatus);
+                logger.debug("Created new status: {}", newStatus.getName());
+            }
+        }
+
+        // Process Priority
+        if (issue.getPriority() != null && issue.getPriority().getId() > 0) {
+            RedminePriority existingPriority = priorityMap.get(issue.getPriority().getId());
+            if (existingPriority != null) {
+                issue.setPriority(existingPriority);
+            } else {
+                // Create and save new priority if it doesn't exist
+                RedminePriority newPriority = issue.getPriority();
+                priorityRepository.save(newPriority);
+                priorityMap.put(newPriority.getId(), newPriority);
+                logger.debug("Created new priority: {}", newPriority.getName());
             }
         }
     }
 
-
-
-    public void saveTrackers(List<RedmineTracker> trackers) {
-        List<RedmineTracker> existingTrackers = trackerRepository.findAll();
-        Map<Integer, RedmineTracker> existingTrackerMap = existingTrackers.stream()
-            .collect(Collectors.toMap(RedmineTracker::getId, Function.identity()));
-
-        for (RedmineTracker tracker : trackers) {
-            try {
-                if (existingTrackerMap.containsKey(tracker.getId())) {
-                    RedmineTracker existing = existingTrackerMap.get(tracker.getId());
-                    boolean isUpdated = false;
-
-                    if (existing.getDescription() == null || !existing.getDescription().equals(tracker.getDescription())) {
-                        existing.setDescription(tracker.getDescription());
-                        isUpdated = true;
-                    }
-
-                    if (isUpdated) {
-                        trackerRepository.save(existing);
-                        logger.info("Updated tracker: {}", existing.getName());
-                    } else {
-                        logger.info("Tracker name: {} is already up-to-date", existing.getName());
-                    }
-                } else {
-                    trackerRepository.save(tracker);
-                    logger.info("New tracker saved: {}", tracker.getName());
-                }
-            } catch (Exception e) {
-                String query = "Saving tracker with ID: " + tracker.getId(); 
-                logger.error("Database error occurred: {}", e.getMessage());
-                logger.error("Failed Query: {}", query);
-                logger.error("StackTrace: ", e);
-                throw new DatabaseException("Error occurred while saving tracker", query, e);
+    private void saveOrUpdateIssue(RedmineIssue issue, Map<Integer, RedmineIssue> existingIssueMap) {
+        if (existingIssueMap.containsKey(issue.getId())) {
+            RedmineIssue existing = existingIssueMap.get(issue.getId());
+            
+            if (shouldUpdateIssue(existing, issue)) {
+                updateIssueFields(existing, issue);
+                issueRepository.save(existing);
+                logger.debug("Updated issue: ID: {}", existing.getId());
+            } else {
+                logger.debug("Issue ID: {} is already up-to-date", existing.getId());
             }
+        } else {
+            issueRepository.save(issue);
+            logger.debug("New issue saved: ID: {}", issue.getId());
         }
+    }
+
+    private boolean shouldUpdateIssue(RedmineIssue existing, RedmineIssue newIssue) {
+        return existing.getUpdatedOn() == null || 
+               (newIssue.getUpdatedOn() != null && newIssue.getUpdatedOn().isAfter(existing.getUpdatedOn()));
+    }
+
+    private void updateIssueFields(RedmineIssue existing, RedmineIssue newIssue) {
+        existing.setProject(newIssue.getProject());
+        existing.setAssignedTo(newIssue.getAssignedTo());
+        existing.setAuthor(newIssue.getAuthor());
+        existing.setTracker(newIssue.getTracker());
+        existing.setSubject(newIssue.getSubject());
+        existing.setDescription(newIssue.getDescription());
+        existing.setStatus(newIssue.getStatus());
+        existing.setPriority(newIssue.getPriority());
+        existing.setStartDate(newIssue.getStartDate());
+        existing.setDueDate(newIssue.getDueDate());
+        existing.setDoneRatio(newIssue.getDoneRatio());
+        existing.setPrivate(newIssue.isPrivate());
+        existing.setEstimatedHours(newIssue.getEstimatedHours());
+        existing.setSpentHours(newIssue.getSpentHours());
+        existing.setCreatedOn(newIssue.getCreatedOn());
+        existing.setUpdatedOn(newIssue.getUpdatedOn());
+        existing.setClosedOn(newIssue.getClosedOn());
+    }
+
+
+    private void handleIssueException(RedmineIssue issue, Exception e) {
+        String query = "Saving issue with ID: " + issue.getId();
+        logger.error("Error occurred while saving issue ID {}: {}", issue.getId(), e.getMessage());
+        logger.error("Failed Query: {}", query);
+        logger.error("StackTrace: ", e);
+        throw new DatabaseException("Error occurred while saving issue", query, e);
+    }
+
+    // Keep all your existing methods for saving other entities
+    public void saveTrackers(List<RedmineTracker> trackers) {
+        if (trackers == null || trackers.isEmpty()) {
+            logger.warn("No trackers to save");
+            return;
+        }
+
+        try {
+            List<RedmineTracker> existingTrackers = trackerRepository.findAll();
+            Map<Integer, RedmineTracker> existingTrackerMap = existingTrackers.stream()
+                .collect(Collectors.toMap(RedmineTracker::getId, Function.identity()));
+
+            for (RedmineTracker tracker : trackers) {
+                try {
+                    saveOrUpdateTracker(tracker, existingTrackerMap);
+                } catch (Exception e) {
+                    handleTrackerException(tracker, e);
+                }
+            }
+        } catch (Exception e) {
+            logger.error("Error occurred while processing trackers batch: {}", e.getMessage(), e);
+            throw new DatabaseException("Error occurred while processing trackers batch", "saveTrackers", e);
+        }
+    }
+
+    private void saveOrUpdateTracker(RedmineTracker tracker, Map<Integer, RedmineTracker> existingTrackerMap) {
+        if (existingTrackerMap.containsKey(tracker.getId())) {
+            RedmineTracker existing = existingTrackerMap.get(tracker.getId());
+            
+            if (shouldUpdateTracker(existing, tracker)) {
+                existing.setName(tracker.getName());
+                existing.setDescription(tracker.getDescription());
+                trackerRepository.save(existing);
+                logger.debug("Updated tracker: {}", existing.getName());
+            } else {
+                logger.debug("Tracker name: {} is already up-to-date", existing.getName());
+            }
+        } else {
+            trackerRepository.save(tracker);
+            logger.debug("New tracker saved: {}", tracker.getName());
+        }
+    }
+
+    private boolean shouldUpdateTracker(RedmineTracker existing, RedmineTracker newTracker) {
+        return !Objects.equals(existing.getName(), newTracker.getName()) ||
+               !Objects.equals(existing.getDescription(), newTracker.getDescription());
+    }
+
+    private void handleTrackerException(RedmineTracker tracker, Exception e) {
+        String query = "Saving tracker with ID: " + tracker.getId();
+        logger.error("Database error occurred while saving tracker ID {}: {}", tracker.getId(), e.getMessage());
+        logger.error("Failed Query: {}", query);
+        logger.error("StackTrace: ", e);
+        throw new DatabaseException("Error occurred while saving tracker", query, e);
     }
 
     public void saveProjects(List<RedmineProject> projects) {
-        Map<String, RedmineProject> projectMap = projects.stream()
-            .collect(Collectors.toMap(RedmineProject::getIdentifier, Function.identity()));
+        if (projects == null || projects.isEmpty()) {
+            logger.warn("No projects to save");
+            return;
+        }
 
-        for (Map.Entry<String, RedmineProject> entry : projectMap.entrySet()) {
-            RedmineProject project = entry.getValue();
+        try {
+            Map<String, RedmineProject> projectMap = projects.stream()
+                .filter(p -> p.getIdentifier() != null && !p.getIdentifier().trim().isEmpty())
+                .collect(Collectors.toMap(
+                    RedmineProject::getIdentifier, 
+                    Function.identity(),
+                    (existing, replacement) -> replacement
+                ));
 
-            try {
-                Optional<RedmineProject> existingProject = projectRepository.findByIdentifier(project.getIdentifier());
-
-                if (existingProject.isPresent()) {
-                    RedmineProject existing = existingProject.get();
-                    boolean isUpdated = false;
-
-                    // Proje açıklamasını 
-                    if (!existing.getDescription().equals(project.getDescription())) {
-                        existing.setDescription(project.getDescription());
-                        isUpdated = true;
-                    }
-
-                    // Proje durumunu kontrolü
-                    if (existing.getStatus() != project.getStatus()) {
-                        existing.setStatus(project.getStatus());
-                        isUpdated = true;
-                    }
-
-                    // Proje erişim durumunu kontrol et ve güncelleme işşlemi
-                    if (existing.isPublic() != project.isPublic()) {
-                        existing.setPublic(project.isPublic());
-                        isUpdated = true;
-                    }
-
-                    // güncellendiyse kaydetme işlemi
-                    if (isUpdated) {
-                        projectRepository.save(existing);
-                        logger.info("Updated project: {}", project.getIdentifier());
-                    } else {
-                        logger.info("Project Identifier: {} is already up-to-date", project.getIdentifier());
-                    }
-                } else {
-                    projectRepository.save(project);
-                    logger.info("New project saved: {}", project.getIdentifier());
+            for (RedmineProject project : projectMap.values()) {
+                try {
+                    saveOrUpdateProject(project);
+                } catch (Exception e) {
+                    handleProjectException(project, e);
                 }
-            } catch (Exception e) {
-                String query = "Saving project with Identifier: " + project.getIdentifier(); // Sorgu bilgisi
-                logger.error("Database error occurred: {}", e.getMessage());
-                logger.error("Failed Query: {}", query);
-                logger.error("StackTrace: ", e);
-                throw new DatabaseException("Error occurred while saving project", query, e);
             }
+        } catch (Exception e) {
+            logger.error("Error occurred while processing projects batch: {}", e.getMessage(), e);
+            throw new DatabaseException("Error occurred while processing projects batch", "saveProjects", e);
         }
     }
 
+    private void saveOrUpdateProject(RedmineProject project) {
+        Optional<RedmineProject> existingProject = projectRepository.findByIdentifier(project.getIdentifier());
+
+        if (existingProject.isPresent()) {
+            RedmineProject existing = existingProject.get();
+            
+            if (shouldUpdateProject(existing, project)) {
+                updateProjectFields(existing, project);
+                projectRepository.save(existing);
+                logger.debug("Updated project: {}", project.getIdentifier());
+            } else {
+                logger.debug("Project Identifier: {} is already up-to-date", project.getIdentifier());
+            }
+        } else {
+            projectRepository.save(project);
+            logger.debug("New project saved: {}", project.getIdentifier());
+        }
+    }
+
+    private boolean shouldUpdateProject(RedmineProject existing, RedmineProject newProject) {
+        return !Objects.equals(existing.getName(), newProject.getName()) ||
+               !Objects.equals(existing.getDescription(), newProject.getDescription()) ||
+               existing.getStatus() != newProject.getStatus() ||
+               existing.isPublic() != newProject.isPublic();
+    }
+
+    private void updateProjectFields(RedmineProject existing, RedmineProject newProject) {
+        existing.setName(newProject.getName());
+        existing.setDescription(newProject.getDescription());
+        existing.setStatus(newProject.getStatus());
+        existing.setPublic(newProject.isPublic());
+        existing.setUpdatedOn(newProject.getUpdatedOn());
+    }
+
+    private void handleProjectException(RedmineProject project, Exception e) {
+        String query = "Saving project with Identifier: " + project.getIdentifier();
+        logger.error("Database error occurred while saving project {}: {}", project.getIdentifier(), e.getMessage());
+        logger.error("Failed Query: {}", query);
+        logger.error("StackTrace: ", e);
+        throw new DatabaseException("Error occurred while saving project", query, e);
+    }
+
     public void saveUsers(List<RedmineUser> users) {
+        if (users == null || users.isEmpty()) {
+            logger.warn("No users to save");
+            return;
+        }
+
         try {
             List<RedmineUser> existingUsers = userRepository.findAll();
             Map<String, RedmineUser> existingUserMap = existingUsers.stream()
+                .filter(user -> user.getLogin() != null && !user.getLogin().isEmpty())
                 .collect(Collectors.toMap(RedmineUser::getLogin, Function.identity()));
 
             for (RedmineUser user : users) {
                 try {
-                    if (existingUserMap.containsKey(user.getLogin())) {
-                        RedmineUser existingUser = existingUserMap.get(user.getLogin());
-                        boolean isUpdated = false;
-
-                        if (!existingUser.getFirstname().equals(user.getFirstname())) {
-                            existingUser.setFirstname(user.getFirstname());
-                            isUpdated = true;
-                        }
-                        if (!existingUser.getLastname().equals(user.getLastname())) {
-                            existingUser.setLastname(user.getLastname());
-                            isUpdated = true;
-                        }
-                        if (!existingUser.getMail().equals(user.getMail())) {
-                            existingUser.setMail(user.getMail());
-                            isUpdated = true;
-                        }
-                        if (existingUser.isAdmin() != user.isAdmin()) {
-                            existingUser.setAdmin(user.isAdmin());
-                            isUpdated = true;
-                        }
-
-                        if (isUpdated) {
-                            userRepository.save(existingUser);
-                            logger.info("Updated user: {}", user.getLogin());
-                        } else {
-                            logger.info("User login: {} is already up-to-date", user.getLogin());
-                        }
-                    } else {
-                        userRepository.save(user);
-                        logger.info("New user saved: {}", user.getLogin());
+                    if (user.getLogin() == null || user.getLogin().trim().isEmpty()) {
+                        logger.warn("Skipping user with empty login");
+                        continue;
                     }
+                    saveOrUpdateUser(user, existingUserMap);
                 } catch (Exception e) {
-                    String query = "Saving user with login: " + user.getLogin(); 
-                    logger.error("Database error occurred while processing user {}: {}", user.getLogin(), e.getMessage());
-                    logger.error("Failed Query: {}", query);
-                    logger.error("StackTrace: ", e);
-                    throw new DatabaseException("Error occurred while saving user", query, e);
+                    handleUserException(user, e);
                 }
             }
         } catch (Exception e) {
-            logger.error("Database error: {}", e.getMessage());
-            throw new DatabaseException("Error occurred while saving users: " + e.getMessage(), e);
+            logger.error("Error occurred while processing users batch: {}", e.getMessage(), e);
+            throw new DatabaseException("Error occurred while processing users batch", "saveUsers", e);
         }
     }
 
-    public void deleteNonMatchingUsers(List<RedmineUser> users) {
-        List<RedmineUser> existingUsers = userRepository.findAll();
-        for (RedmineUser existingUser : existingUsers) {
-            boolean found = users.stream()
-                .anyMatch(user -> user.getLogin().equals(existingUser.getLogin()));
-            if (!found) {
-                userRepository.delete(existingUser);
-                logger.info("Deleted user: {}", existingUser.getLogin());
+    private void saveOrUpdateUser(RedmineUser user, Map<String, RedmineUser> existingUserMap) {
+        if (existingUserMap.containsKey(user.getLogin())) {
+            RedmineUser existingUser = existingUserMap.get(user.getLogin());
+            
+            if (shouldUpdateUser(existingUser, user)) {
+                updateUserFields(existingUser, user);
+                userRepository.save(existingUser);
+                logger.debug("Updated user: {}", user.getLogin());
+            } else {
+                logger.debug("User login: {} is already up-to-date", user.getLogin());
             }
+        } else {
+            userRepository.save(user);
+            logger.debug("New user saved: {}", user.getLogin());
+        }
+    }
+
+    private boolean shouldUpdateUser(RedmineUser existing, RedmineUser newUser) {
+        return !Objects.equals(existing.getFirstname(), newUser.getFirstname()) ||
+               !Objects.equals(existing.getLastname(), newUser.getLastname()) ||
+               !Objects.equals(existing.getMail(), newUser.getMail()) ||
+               existing.isAdmin() != newUser.isAdmin();
+    }
+
+    private void updateUserFields(RedmineUser existing, RedmineUser newUser) {
+        existing.setFirstname(newUser.getFirstname());
+        existing.setLastname(newUser.getLastname());
+        existing.setMail(newUser.getMail());
+        existing.setAdmin(newUser.isAdmin());
+    }
+
+    private void handleUserException(RedmineUser user, Exception e) {
+        String query = "Saving user with login: " + user.getLogin();
+        logger.error("Database error occurred while processing user {}: {}", user.getLogin(), e.getMessage());
+        logger.error("Failed Query: {}", query);
+        logger.error("StackTrace: ", e);
+        throw new DatabaseException("Error occurred while saving user", query, e);
+    }
+
+    // Deletion methods with improved error handling and batch processing
+    public void deleteNonMatchingUsers(List<RedmineUser> users) {
+        if (users == null) {
+            logger.warn("Users list is null, skipping deletion");
+            return;
+        }
+
+        try {
+            List<RedmineUser> existingUsers = userRepository.findAll();
+            List<String> userLogins = users.stream()
+                .filter(user -> user.getLogin() != null && !user.getLogin().isEmpty())
+                .map(RedmineUser::getLogin)
+                .collect(Collectors.toList());
+
+            List<RedmineUser> usersToDelete = existingUsers.stream()
+                .filter(existingUser -> !userLogins.contains(existingUser.getLogin()))
+                .collect(Collectors.toList());
+
+            if (!usersToDelete.isEmpty()) {
+                userRepository.deleteAll(usersToDelete);
+                logger.info("Deleted {} users", usersToDelete.size());
+                usersToDelete.forEach(user -> logger.debug("Deleted user: {}", user.getLogin()));
+            }
+        } catch (Exception e) {
+            logger.error("Error occurred while deleting non-matching users: {}", e.getMessage(), e);
+            throw new DatabaseException("Error occurred while deleting non-matching users", "deleteNonMatchingUsers", e);
         }
     }
 
     public void deleteNonMatchingProjects(List<RedmineProject> projects) {
-        List<RedmineProject> existingProjects = projectRepository.findAll();
-        for (RedmineProject existingProject : existingProjects) {
-            boolean found = projects.stream()
-                .anyMatch(project -> project.getIdentifier().equals(existingProject.getIdentifier()));
-            if (!found) {
-                projectRepository.delete(existingProject);
-                logger.info("Deleted project: {}", existingProject.getIdentifier());
+        if (projects == null) {
+            logger.warn("Projects list is null, skipping deletion");
+            return;
+        }
+
+        try {
+            List<RedmineProject> existingProjects = projectRepository.findAll();
+            List<String> projectIdentifiers = projects.stream()
+                .filter(project -> project.getIdentifier() != null && !project.getIdentifier().isEmpty())
+                .map(RedmineProject::getIdentifier)
+                .collect(Collectors.toList());
+
+            List<RedmineProject> projectsToDelete = existingProjects.stream()
+                .filter(existingProject -> !projectIdentifiers.contains(existingProject.getIdentifier()))
+                .collect(Collectors.toList());
+
+            if (!projectsToDelete.isEmpty()) {
+                projectRepository.deleteAll(projectsToDelete);
+                logger.info("Deleted {} projects", projectsToDelete.size());
+                projectsToDelete.forEach(project -> logger.debug("Deleted project: {}", project.getIdentifier()));
             }
+        } catch (Exception e) {
+            logger.error("Error occurred while deleting non-matching projects: {}", e.getMessage(), e);
+            throw new DatabaseException("Error occurred while deleting non-matching projects", "deleteNonMatchingProjects", e);
         }
     }
 
     public void deleteNonMatchingTrackers(List<RedmineTracker> trackers) {
-        List<RedmineTracker> existingTrackers = trackerRepository.findAll();
-        for (RedmineTracker existingTracker : existingTrackers) {
-            boolean found = trackers.stream()
-                .anyMatch(tracker -> tracker.getId() == existingTracker.getId());
-            if (!found) {
-                trackerRepository.delete(existingTracker);
-                logger.info("Deleted tracker: {}", existingTracker.getName());
+        if (trackers == null) {
+            logger.warn("Trackers list is null, skipping deletion");
+            return;
+        }
+
+        try {
+            List<RedmineTracker> existingTrackers = trackerRepository.findAll();
+            List<Integer> trackerIds = trackers.stream()
+                .map(RedmineTracker::getId)
+                .collect(Collectors.toList());
+
+            List<RedmineTracker> trackersToDelete = existingTrackers.stream()
+                .filter(existingTracker -> !trackerIds.contains(existingTracker.getId()))
+                .collect(Collectors.toList());
+
+            if (!trackersToDelete.isEmpty()) {
+                trackerRepository.deleteAll(trackersToDelete);
+                logger.info("Deleted {} trackers", trackersToDelete.size());
+                trackersToDelete.forEach(tracker -> logger.debug("Deleted tracker: {}", tracker.getName()));
             }
+        } catch (Exception e) {
+            logger.error("Error occurred while deleting non-matching trackers: {}", e.getMessage(), e);
+            throw new DatabaseException("Error occurred while deleting non-matching trackers", "deleteNonMatchingTrackers", e);
         }
     }
 
     public void deleteNonMatchingIssues(List<RedmineIssue> issues) {
-        List<RedmineIssue> existingIssues = issueRepository.findAll();
-        for (RedmineIssue existingIssue : existingIssues) {
-            boolean found = issues.stream()
-                .anyMatch(issue -> issue.getId() == existingIssue.getId());
-            if (!found) {
-                issueRepository.delete(existingIssue);
-                logger.info("Deleted issue: {}", existingIssue.getSubject());
+        if (issues == null) {
+            logger.warn("Issues list is null, skipping deletion");
+            return;
+        }
+
+        try {
+            List<RedmineIssue> existingIssues = issueRepository.findAll();
+            List<Integer> issueIds = issues.stream()
+                .map(RedmineIssue::getId)
+                .collect(Collectors.toList());
+
+            List<RedmineIssue> issuesToDelete = existingIssues.stream()
+                .filter(existingIssue -> !issueIds.contains(existingIssue.getId()))
+                .collect(Collectors.toList());
+
+            if (!issuesToDelete.isEmpty()) {
+                issueRepository.deleteAll(issuesToDelete);
+                logger.info("Deleted {} issues", issuesToDelete.size());
+                issuesToDelete.forEach(issue -> logger.debug("Deleted issue: {}", issue.getSubject()));
             }
+        } catch (Exception e) {
+            logger.error("Error occurred while deleting non-matching issues: {}", e.getMessage(), e);
+            throw new DatabaseException("Error occurred while deleting non-matching issues", "deleteNonMatchingIssues", e);
         }
     }
 }
