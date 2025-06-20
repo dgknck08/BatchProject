@@ -2,7 +2,7 @@ package com.example.springProject.exception;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;	
+import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
@@ -12,13 +12,19 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ApiException.class)
     public ResponseEntity<Map<String, Object>> handleApiException(ApiException ex) {
         return ResponseEntity.status(ex.getStatusCode())
-                .body(Map.of("error", ex.getMessage(), "query", ex.getQuery()));
+                .body(Map.of(
+                    "error", ex.getMessage(),
+                    "endpoint", ex.getEndpoint()
+                ));
     }
 
     @ExceptionHandler(DatabaseException.class)
     public ResponseEntity<Map<String, Object>> handleDbException(DatabaseException ex) {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(Map.of("error", ex.getMessage(), "query", ex.getQuery()));
+                .body(Map.of(
+                    "error", ex.getMessage(),
+                    "failedQuery", ex.getFailedQuery()
+                ));
     }
 
     @ExceptionHandler(Exception.class)

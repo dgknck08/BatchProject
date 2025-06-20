@@ -3,20 +3,20 @@ package com.example.springProject.exception;
 
 @SuppressWarnings("serial")
 public class ApiException extends RuntimeException {
-    private final int statusCode; 
-    private final String query;    
+    private final int statusCode;
+    private final String endpoint;
 
-    public ApiException(String message, int statusCode, String query) {
-        super(message); 
+    public ApiException(String message, int statusCode, String endpoint) {
+        super(message);
         this.statusCode = statusCode;
-        this.query = query;
+        this.endpoint = endpoint;
     }
 
     public int getStatusCode() {
-        return statusCode; 
+        return statusCode;
     }
 
-    public String getQuery() {
-        return query;
+    public String getEndpoint() {
+        return endpoint;
     }
 }
