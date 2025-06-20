@@ -1,6 +1,6 @@
 package com.example.springProject.model;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -12,11 +12,8 @@ import jakarta.persistence.*;
 public class RedmineUser {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @JsonProperty("id")
     private int id;
-
-    private String username;
 
     @JsonProperty("login")
     @Column(unique = true, nullable = false)
@@ -35,39 +32,70 @@ public class RedmineUser {
     private String mail;
 
     @JsonProperty("created_on")
-    private LocalDateTime createdOn;
+    private OffsetDateTime createdOn;
 
     @JsonProperty("updated_on")
-    private LocalDateTime updatedOn;
+    private OffsetDateTime updatedOn;
 
     @JsonProperty("last_login_on")
-    private LocalDateTime lastLoginOn;
+    private OffsetDateTime lastLoginOn;
 
     @JsonProperty("passwd_changed_on")
-    private LocalDateTime passwdChangedOn;
+    private OffsetDateTime passwdChangedOn;
 
     @JsonProperty("twofa_scheme")
     private String twofaScheme;
 
-    @OneToMany(mappedBy = "assignedTo", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
-    private List<RedmineIssue> issues;
+    
+    @OneToMany(mappedBy = "assignedTo", fetch = FetchType.LAZY)
+    private List<RedmineIssue> assignedIssues;
+
+    @OneToMany(mappedBy = "author", fetch = FetchType.LAZY)
+    private List<RedmineIssue> authoredIssues;
+
 
     // Getters and Setters
 
+    @JsonProperty("name")
+    public String getName() {
+        StringBuilder nameBuilder = new StringBuilder();
+        if (firstname != null && !firstname.isEmpty()) {
+            nameBuilder.append(firstname);
+        }
+        if (lastname != null && !lastname.isEmpty()) {
+            if (nameBuilder.length() > 0) {
+                nameBuilder.append(" ");
+            }
+            nameBuilder.append(lastname);
+        }
+        return nameBuilder.toString();
+    }
+
+    // Name setter için (JSON deserialization için)
+    @JsonProperty("name")
+    public void setName(String name) {
+        if (name != null && !name.trim().isEmpty()) {
+            String[] nameParts = name.trim().split(" ", 2);
+            
+            if (nameParts.length > 0) {
+                this.firstname = nameParts[0];
+            }
+            if (nameParts.length > 1) {
+                this.lastname = nameParts[1];
+            }
+            
+            // Eğer login null ise, name'den oluştur
+            if (this.login == null || this.login.isEmpty()) {
+                this.login = name.replaceAll(" ", ".").toLowerCase();
+            }
+        }
+    }
     public int getId() {
         return id;
     }
 
     public void setId(int id) {
         this.id = id;
-    }
-
-    public String getUsername() {
-        return username != null ? username : "";
-    }
-
-    public void setUsername(String username) {
-        this.username = username != null ? username : "";
     }
 
     public String getLogin() {
@@ -113,35 +141,35 @@ public class RedmineUser {
         this.mail = mail != null ? mail : "";
     }
 
-    public LocalDateTime getCreatedOn() {
+    public OffsetDateTime getCreatedOn() {
         return createdOn;
     }
 
-    public void setCreatedOn(LocalDateTime createdOn) {
+    public void setCreatedOn(OffsetDateTime createdOn) {
         this.createdOn = createdOn;
     }
 
-    public LocalDateTime getUpdatedOn() {
+    public OffsetDateTime getUpdatedOn() {
         return updatedOn;
     }
 
-    public void setUpdatedOn(LocalDateTime updatedOn) {
+    public void setUpdatedOn(OffsetDateTime updatedOn) {
         this.updatedOn = updatedOn;
     }
 
-    public LocalDateTime getLastLoginOn() {
+    public OffsetDateTime getLastLoginOn() {
         return lastLoginOn;
     }
 
-    public void setLastLoginOn(LocalDateTime lastLoginOn) {
+    public void setLastLoginOn(OffsetDateTime lastLoginOn) {
         this.lastLoginOn = lastLoginOn;
     }
 
-    public LocalDateTime getPasswdChangedOn() {
+    public OffsetDateTime getPasswdChangedOn() {
         return passwdChangedOn;
     }
 
-    public void setPasswdChangedOn(LocalDateTime passwdChangedOn) {
+    public void setPasswdChangedOn(OffsetDateTime passwdChangedOn) {
         this.passwdChangedOn = passwdChangedOn;
     }
 
@@ -154,10 +182,10 @@ public class RedmineUser {
     }
 
     public List<RedmineIssue> getIssues() {
-        return issues;
+        return assignedIssues;
     }
 
-    public void setIssues(List<RedmineIssue> issues) {
-        this.issues = issues;
+    public void setIssues(List<RedmineIssue> assignedIssues) {
+        this.assignedIssues = assignedIssues;
     }
 }
