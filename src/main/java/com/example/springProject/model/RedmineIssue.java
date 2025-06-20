@@ -5,10 +5,12 @@ import java.time.LocalDateTime;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonProperty;
-
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.example.springProject.util.RedmineIssueDeserializer;
 import jakarta.persistence.*;
 
 @Entity
+@JsonDeserialize(using = RedmineIssueDeserializer.class)
 @Table(name = "issues")
 public class RedmineIssue {
 
@@ -26,6 +28,26 @@ public class RedmineIssue {
     @JoinColumn(name = "assigned_to_id")
     private RedmineUser assignedTo;
 
+    @JsonProperty("tracker")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "tracker_id")
+    private RedmineTracker tracker;
+
+    @JsonProperty("status")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "status_id")
+    private RedmineStatus status;
+
+    @JsonProperty("priority")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "priority_id")
+    private RedminePriority priority;
+
+    @JsonProperty("author")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "author_id")
+    private RedmineUser author;
+
     @JsonProperty("subject")
     private String subject;
 
@@ -37,11 +59,11 @@ public class RedmineIssue {
     @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate startDate;
 
-    @Column(name = "closed_date")
-    private LocalDateTime closedDate;
-
     @JsonProperty("due_date")
     private LocalDate dueDate;
+
+    @Column(name = "closed_date")
+    private LocalDateTime closedDate;
 
     @JsonProperty("done_ratio")
     private int doneRatio;
@@ -64,13 +86,7 @@ public class RedmineIssue {
     @JsonProperty("closed_on")
     private LocalDateTime closedOn;
 
-    @JsonProperty("statusid")
-    private int statusId;
-
-    @JsonProperty("priorityid")
-    private int priorityId;
-
-    // Getters and Setters
+    // --- Getters & Setters ---
 
     public int getId() {
         return id;
@@ -94,6 +110,38 @@ public class RedmineIssue {
 
     public void setAssignedTo(RedmineUser assignedTo) {
         this.assignedTo = assignedTo;
+    }
+
+    public RedmineTracker getTracker() {
+        return tracker;
+    }
+
+    public void setTracker(RedmineTracker tracker) {
+        this.tracker = tracker;
+    }
+
+    public RedmineStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(RedmineStatus status) {
+        this.status = status;
+    }
+
+    public RedminePriority getPriority() {
+        return priority;
+    }
+
+    public void setPriority(RedminePriority priority) {
+        this.priority = priority;
+    }
+
+    public RedmineUser getAuthor() {
+        return author;
+    }
+
+    public void setAuthor(RedmineUser author) {
+        this.author = author;
     }
 
     public String getSubject() {
@@ -190,21 +238,5 @@ public class RedmineIssue {
 
     public void setClosedOn(LocalDateTime closedOn) {
         this.closedOn = closedOn;
-    }
-
-    public int getStatusId() {
-        return statusId;
-    }
-
-    public void setStatusId(int statusId) {
-        this.statusId = statusId;
-    }
-
-    public int getPriorityId() {
-        return priorityId;
-    }
-
-    public void setPriorityId(int priorityId) {
-        this.priorityId = priorityId;
     }
 }
