@@ -1,108 +1,123 @@
 package com.example.springProject.service.batch;
 
-import java.util.List;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.Supplier;
+import com.example.springProject.model.*;
+import com.example.springProject.util.EmailService;
 
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import com.example.springProject.exception.ApiException;
-import com.example.springProject.exception.DatabaseException;
-import com.example.springProject.model.RedmineResponse;
-
 import ch.qos.logback.classic.Logger;
+
+import java.time.Duration;
+import java.time.Instant;
+import java.util.List;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Supplier;
 
 @Service
 public class RedmineProccesorService {
 
     private static final Logger logger = (Logger) LoggerFactory.getLogger(RedmineProccesorService.class);
 
-    private final DataPersistenceService dataPersistenceService;
     private final RedmineService redmineService;
+    private final DataPersistenceService dataPersistenceService;
+    private final EmailService emailService;
 
     @Autowired
-    public RedmineProccesorService(DataPersistenceService dataPersistenceService, RedmineService redmineService) {
-        this.dataPersistenceService = dataPersistenceService;
+    public RedmineProccesorService(RedmineService redmineService,
+                                   DataPersistenceService dataPersistenceService,
+                                   EmailService emailService) {
         this.redmineService = redmineService;
+        this.dataPersistenceService = dataPersistenceService;
+        this.emailService = emailService;
     }
 
-    private <T> void process(
-            Supplier<RedmineResponse> fetchFunction,
-            Function<RedmineResponse, List<T>> getDataFunction,
-            Consumer<List<T>> saveFunction,
-            Consumer<List<T>> deleteFunction,
-            String logEntityName
-    ) {
+    public void processAll() {
+        processUsers();
+        processProjects();
+        processTrackers();
+        processAllIssues();
+    }
+
+    public <T> void processEntity(Supplier<RedmineResponse> fetchFunction,
+                                  Function<RedmineResponse, List<T>> extractData,
+                                  Consumer<List<T>> saveFunction,
+                                  Consumer<List<T>> deleteFunction,
+                                  String entityName) {
+        logger.info("⏳ Starting processing for: {}", entityName);
+        Instant start = Instant.now();
+
         try {
             RedmineResponse response = fetchFunction.get();
+            List<T> data = extractData.apply(response);
 
-            if (response != null) {
-                List<T> entities = getDataFunction.apply(response);
-
-                if (entities != null && !entities.isEmpty()) {
-                    deleteFunction.accept(entities);
-                    saveFunction.accept(entities);
-                    logger.info("{} data has been successfully saved.", logEntityName);
-                } else {
-                    logger.warn("{} data is not available.", logEntityName);
-                }
-            } else {
-                throw new ApiException("No response received from the API.", 500, logEntityName);
+            if (data == null || data.isEmpty()) {
+                logger.warn("No {} data found", entityName);
+                return;
             }
-        } catch (ApiException e) {
-            handleException("An error occurred during the API call", e);
-        } catch (DatabaseException e) {
-            handleException("An error occurred during database operations", e);
+
+            saveFunction.accept(data);
+            deleteFunction.accept(data);
+
+            Instant end = Instant.now();
+            Duration duration = Duration.between(start, end);
+            logger.info("Finished processing {} in {}ms", entityName, duration.toMillis());
         } catch (Exception e) {
-            handleException("An unknown error occurred", e);
+            Instant end = Instant.now();
+            Duration duration = Duration.between(start, end);
+
+            String errorMessage = String.format("Error processing %s: %s", entityName, e.getMessage());
+            logger.error(errorMessage, e);
+
+            emailService.sendErrorEmail(entityName, e.getMessage(), duration);
         }
     }
 
-    private void handleException(String message, Exception e) {
-        logger.error("{}: {} | Status Code: {} | Error Details: {}", 
-                     message, e.getMessage(), e instanceof ApiException ? ((ApiException) e).getStatusCode() : "N/A", e);
-    }
-
-    public void processTrackers() {
-        process(
-            redmineService::fetchTrackersFromRedmine,
-            RedmineResponse::getTrackers,
-            dataPersistenceService::saveTrackers,
-            dataPersistenceService::deleteNonMatchingTrackers,
-            "Trackers"
-        );
-    }
-
     public void processUsers() {
-        process(
-            redmineService::fetchUsersFromRedmine,
-            RedmineResponse::getUsers,
-            dataPersistenceService::saveUsers,
-            dataPersistenceService::deleteNonMatchingUsers,
-            "Users"
+        processEntity(
+                redmineService::fetchUsersFromRedmine,
+                RedmineResponse::getUsers,
+                dataPersistenceService::saveUsers,
+                dataPersistenceService::deleteNonMatchingUsers,
+                "Users"
         );
     }
 
     public void processProjects() {
-        process(
-            redmineService::fetchProjectsFromRedmine,
-            RedmineResponse::getProjects,
-            dataPersistenceService::saveProjects,
-            dataPersistenceService::deleteNonMatchingProjects,
-            "Projects"
+        processEntity(
+                redmineService::fetchProjectsFromRedmine,
+                RedmineResponse::getProjects,
+                dataPersistenceService::saveProjects,
+                dataPersistenceService::deleteNonMatchingProjects,
+                "Projects"
         );
     }
 
-    public void processIssues() {
-        process(
-            redmineService::fetchIssuesFromRedmine,
-            RedmineResponse::getIssues,
-            dataPersistenceService::saveIssues,
-            dataPersistenceService::deleteNonMatchingIssues,
-            "Issues"
+    public void processTrackers() {
+        processEntity(
+                redmineService::fetchTrackersFromRedmine,
+                RedmineResponse::getTrackers,
+                dataPersistenceService::saveTrackers,
+                dataPersistenceService::deleteNonMatchingTrackers,
+                "Trackers"
         );
     }
+
+    public void processAllIssues() {
+        int offset = 0;
+        int limit = 100;
+
+        while (true) {
+            RedmineResponse response = redmineService.fetchAllIssuesFromRedmine(offset, limit);
+            List<RedmineIssue> issues = response.getIssues();
+
+            if (issues == null || issues.isEmpty()) break;
+
+            dataPersistenceService.saveIssues(issues);  
+            offset += limit;
+        }
+    }
+
 }

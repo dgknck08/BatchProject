@@ -99,20 +99,13 @@ public class RedmineService {
             throw new ApiException(errorMsg, 500, url);
         }
     }
-
-    // Açık issue'ları çek
-    public RedmineResponse fetchOpenIssuesFromRedmine() {
-        String url = buildApiUrl("/issues.json", "?status_id=open&limit=100");
-        return fetchFromRedmine(url, "Open Issues");
+    //tüm issueları (closed,open olarak çekmek için).
+    public RedmineResponse fetchAllIssuesFromRedmine(int offset, int limit) {
+        String url = buildApiUrl("/issues.json", "?status_id=*&limit=" + limit + "&offset=" + offset);
+        return fetchFromRedmine(url, "All Issues");
     }
 
-    // Kapalı issue'ları çek
-    public RedmineResponse fetchClosedIssuesFromRedmine() {
-        String url = buildApiUrl("/issues.json", "?status_id=close&limit=100");
-        return fetchFromRedmine(url, "Closed Issues");
-    }
-
-    // Diğer metodlar (trackers, users, projects) aynen kalabilir
+    // Diğer metodlar sabit kaldı
     public RedmineResponse fetchTrackersFromRedmine() {
         String url = buildApiUrl("/trackers.json", "?limit=100");
         return fetchFromRedmine(url, "Trackers");
