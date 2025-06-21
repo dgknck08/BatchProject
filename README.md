@@ -1,59 +1,65 @@
-# 🌀 Redmine Issue Tracker Batch Project
+# Redmine Dashboard Backend
 
-# 📌 Project Purpose & Project Overview
-This project aims to automate the process of fetching and analyzing Redmine issue data to track and visualize employee performance. By utilizing a cron job mechanism, Redmine data is fetched regularly, processed, and presented in visually appealing charts and tables to give an overview of issues resolved by employees.
+## Project Overview
 
-## 🚀 Technologies Used
+This project is a backend service that fetches data from the **Redmine** project management system, processes and stores it in a database, and provides RESTful APIs to serve this data to a React + Vite frontend application.
 
-Automated Data Fetching: Fetch Redmine issue data on a regular basis via cron jobs.
+---
 
-Data Analysis: Process the fetched data to track employee performance.
+## Architecture & Data Flow
 
-Custom Time Ranges: Specify time intervals (e.g., daily, weekly, monthly) to generate tailored reports.
-
-Visual Reporting: Display data in intuitive graphs, charts, and tables.
-
-Redmine API: To fetch real-time issue data.
-
-Cron Jobs: To automate periodic data fetching.
-
-Java: Backend data processing and Redmine integration.
-
-Spring Boot: For creating backend services.
-
-MySQL/PostgreSQL: For data storage.
-
-Thymeleaf/JavaScript: For rendering visual charts.
-
-Data Processing
-The fetched data is processed to track metrics such as:
-
-Number of issues resolved per employee
-
-Time taken to resolve each issue
-
-Trends over time
-
-Reporting
-The processed data is visualized as:
-
-Graphs and charts showing the number of issues resolved
-
-Tables summarizing team performance
-
-Prerequisites
-Redmine API Key: You need your Redmine API key.
-
-MySQL/PostgreSQL: Database to store fetched data.
-
-Java 8 or Later: To run the backend services.
-
-Spring Boot: For backend services.
+```plaintext
+Redmine API
+    ↓ (1. Data Fetching)
+Backend Service (Spring Boot)
+    - Retrieves issues, users, projects, etc. from Redmine API
+    - Processes and transforms data
+    - Persists data to relational database (MySQL/PostgreSQL)
+    - Exposes REST API endpoints
+        ↓ (2. API Data Serving)
+React + Vite Frontend
+    - Fetches data from backend APIs
+    - Renders dashboards and visualizations
 
 
-Optionally sends email notifications or reports.
+Step 1: Fetching Data from Redmine API
+Data is fetched periodically or manually via scheduled batch services.
 
-🔐 Security Notice
-Keep your .env file private — it should never be committed to version control.
+Data includes issues, projects, users, with custom business logic applied (e.g., overdue issues, user performance).
 
-Store sensitive credentials securely (e.g., using environment variables in production).
+Transactions and error handling ensure data consistency.
+
+Step 2: Persisting Data to Database
+Data is saved and updated in the database via JPA/Hibernate repositories.
+
+Efficient database operations ensure up-to-date and consistent records.
+
+Step 3: Serving Data via REST API
+RESTful endpoints implemented using Spring MVC (@RestController).
+
+Frontend makes fetch requests to these endpoints and receives JSON responses.
+
+Data is then used for dashboard charts, tables, and metrics.
+
+Technologies Used
+
+
+| Layer           | Technology            | Description                     |
+| --------------- | --------------------- | ------------------------------- |
+| Backend         | Java 17 + Spring Boot | API and business logic services |
+| Data Access     | Hibernate + JPA       | Database interaction            |
+| Database        | MySQL/PostgreSQL      | Persistent data storage         |
+| Frontend        | React + Vite          | Modern, fast UI                 |
+| Charts & Styles | Recharts + Tailwind   | Dashboard visualization         |
+| Communication   | REST API + Fetch      | Backend-Frontend communication  |
+
+
+
+API Endpoints Examples
+
+| Endpoint                        | Method | Description                |
+| ------------------------------- | ------ | -------------------------- |
+| `/api/dashboard/stats`          | GET    | Returns general statistics |
+| `/api/dashboard/top-performers` | GET    | Lists top performing users |
+| `/api/dashboard/overdue-issues` | GET    | Lists overdue issues       |
+| `/api/dashboard/most-active`    | GET    | Lists most active users    |
