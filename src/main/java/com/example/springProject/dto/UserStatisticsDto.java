@@ -10,6 +10,8 @@ public class UserStatisticsDto {
     private Long totalIssueCount;
     private Long activeIssueCount;
     private Long overdueIssueCount;
+    private Long closedIssueCount;
+    
     private Double completionRate;
     private Long totalEstimatedHours;
     private Long totalSpentHours;
@@ -25,9 +27,16 @@ public class UserStatisticsDto {
         this.totalIssueCount = totalIssueCount;
         this.completionRate = totalIssueCount > 0 ? (double) completedIssueCount / totalIssueCount * 100 : 0.0;
     }
+    
+    public Long getClosedIssueCount() {
+		return closedIssueCount;
+	}
 
-    // Getters and Setters
-    public String getUsername() { return username; }
+	public void setClosedIssueCount(Long closedIssueCount) {
+		this.closedIssueCount = closedIssueCount;
+	}
+
+	public String getUsername() { return username; }
     public void setUsername(String username) { this.username = username; }
 
     public String getFirstName() { return firstName; }

@@ -5,14 +5,78 @@ public class DashboardStatsDto {
     private Long totalActiveIssues;
     private Long totalOverdueIssues;
     private Long totalCompletedIssues;
+   
+    private Long totalClosedIssues;
+    private Long totalOpenIssues;
+    private Long totalResolvedIssues;
+    private Long totalAllIssues;
+    
     private Double averageCompletionRate;
     private Long totalEstimatedHours;
     private Long totalSpentHours;
 
     public DashboardStatsDto() {}
+    
+    
+    
+    
+    public Long getTotalClosedIssues() {
+		return totalClosedIssues;
+	}
 
-    // Getters and Setters
-    public Long getTotalUsers() { return totalUsers; }
+
+
+
+	public void setTotalClosedIssues(Long totalClosedIssues) {
+		this.totalClosedIssues = totalClosedIssues;
+	}
+
+
+
+
+	public Long getTotalOpenIssues() {
+		return totalOpenIssues;
+	}
+
+
+
+
+	public void setTotalOpenIssues(Long totalOpenIssues) {
+		this.totalOpenIssues = totalOpenIssues;
+	}
+
+
+
+
+	public Long getTotalResolvedIssues() {
+		return totalResolvedIssues;
+	}
+
+
+
+
+	public void setTotalResolvedIssues(Long totalResolvedIssues) {
+		this.totalResolvedIssues = totalResolvedIssues;
+	}
+
+
+
+
+	public Long getTotalAllIssues() {
+		return totalAllIssues;
+	}
+
+
+
+
+	public void setTotalAllIssues(Long totalAllIssues) {
+		this.totalAllIssues = totalAllIssues;
+	}
+
+
+
+
+	public Long getTotalUsers() { return totalUsers; }
     public void setTotalUsers(Long totalUsers) { this.totalUsers = totalUsers; }
 
     public Long getTotalActiveIssues() { return totalActiveIssues; }
