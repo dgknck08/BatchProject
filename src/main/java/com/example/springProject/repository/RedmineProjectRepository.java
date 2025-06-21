@@ -12,7 +12,9 @@ import com.example.springProject.model.RedmineProject;
 public interface RedmineProjectRepository extends JpaRepository<RedmineProject,Integer>{
 	  Optional<RedmineProject> findByName(String name);
 	  Optional<RedmineProject> findByIdentifier(String identifier);
-	  @Query("SELECT p FROM RedmineProject p JOIN p.issues i WHERE i.assignedTo.username = :username")
-	  List<RedmineProject> findProjectsByUsername(@Param("username") String username);
+	  @Query("SELECT DISTINCT p FROM RedmineProject p " +
+	           "JOIN RedmineIssue i ON i.project.id = p.id " +
+	           "WHERE i.assignedTo.login = :username")
+	    List<RedmineProject> findProjectsByUsername(@Param("username") String username);
 
 }
